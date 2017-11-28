@@ -25,13 +25,12 @@ void setup() {
 	}
 	Serial.print("Serial channel open \n");
 
-	
 	Serial.print("Calling Setup \n");
 	tempSensor.Setup();
 }
 
 void loop() {
 	
-	tempSensor.PrintHtml();
+	tempSensor.PrintJson();
 }
 

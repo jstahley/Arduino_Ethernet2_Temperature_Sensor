@@ -10,7 +10,6 @@ TemperatureSensor::TemperatureSensor()
 
 void TemperatureSensor::PrintHtml()
 {
-
 	EthernetClient client = _server.available();
 
 	if (client) {
@@ -84,9 +83,76 @@ void TemperatureSensor::PrintHtml()
 
 void TemperatureSensor::PrintJson()
 {
+	EthernetClient client = _server.available();
 
+	if (client) {
+		Serial.println("new client");
+		// an http request ends with a blank line
+		boolean currentLineIsBlank = true;
+		while (client.connected()) {
+			if (client.available()) {
+				char c = client.read();
+				Serial.write(c);
 
+				if (c == '\n' && currentLineIsBlank) {
+					// send a standard http response header
+					client.println("HTTP/1.1 200 OK");
+					client.println("Content-Type: application/json");
+					client.println("Connection: close"); 
 
+					client.println();
+					client.print("{");
+
+					_analogReading = analogRead(_inputPin);
+
+					client.print("\"AnalogOutputRaw\":");
+					client.print("\"");
+					client.print(_analogReading);
+					client.print("\", ");
+
+					// converting that reading to voltage, which is based off the reference voltage
+					float voltage = _analogReading * aref_voltage;
+					voltage /= 1024.0;
+
+					client.print("\"SensorVoltage\":");
+					client.print("\"");
+					client.print(voltage);
+					client.print("\", ");
+
+					float temperatureC = (voltage - 0.5) * 100;  //converting from 10 mv per degree wit 500 mV offset
+					client.print("\"TempatureCelcius\":");
+					client.print("\"");
+					client.print(temperatureC);
+					client.print("\", ");
+
+					// now convert to Fahrenheight
+					float temperatureF = (temperatureC * 9.0 / 5.0) + 32.0;
+					client.print("\"TempatureFahrenheit\":");
+					client.print("\"");
+					client.print(temperatureF);
+					client.print("\"");
+
+					delay(1000);
+
+					client.print("}");
+					break;
+				}
+				if (c == '\n') {
+					// you're starting a new line
+					currentLineIsBlank = true;
+				}
+				else if (c != '\r') {
+					// you've gotten a character on the current line
+					currentLineIsBlank = false;
+				}
+			}
+		}
+		// give the web browser time to receive the data
+		delay(1);
+		// close the connection:
+		client.stop();
+		Serial.println("client disconnected");
+	}
 }
 
 void TemperatureSensor::Setup()
